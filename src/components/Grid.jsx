@@ -68,6 +68,10 @@ function Grid(props) {
         }
         console.log(state.game_over);
     }
+	function resetGrid() {
+		bombs = 0;
+		setState({grid: init(), bombs : bombs, totalRevealed: 0, game_over: false});
+	}
     function recursiveSetState(row, col) {
         let visited = new Set();
         let stack = [];
@@ -112,7 +116,8 @@ function Grid(props) {
     }
     return (
         <div>
-        <p style={{textAlign:"center"}}>Minesweeper <br></br> {state.game_over === "lost" && "Game over! You clicked on a mine!"} {state.game_over === "won" && "You won! All the empty squares are marked!"}</p>
+        <p style={{textAlign:"center"}}>Minesweeper <br></br> {state.game_over === "lost" && "Game over! You clicked on a mine!"} {state.game_over === "won" && "You won! All the empty squares are marked!"}
+		<br></br><button onClick={resetGrid}>New Game</button></p>
         <div class = "container" style={{marginTop: "2%"}}> 
         {rows}
         </div>
