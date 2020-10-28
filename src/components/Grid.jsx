@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from "react";
+import {useEffect, useState} from "react";
 import Row from "./Row";
 function validCell(row, col, size) {
     return row >= 0 && row < size && col >= 0 && col < size;
@@ -7,12 +7,15 @@ function Grid(props) {
     let rows = [];
     let bombs = 0;
     let [state, setState] = useState({
-        grid: init(),
-        bombs: bombs,
+        grid: start(),
+		initialized: false,
+        bombs: 0,
         totalRevealed: 0,
+		prevRow: -1,
+		prevCol: -1,
         game_over:false
     });
-    function init() {
+	 function start() {
         let grid = [];
         for (let i = 0; i < props.size; ++i) {
             grid.push([]);
@@ -20,7 +23,25 @@ function Grid(props) {
                 grid[i].push({
                     row: i,
                     col: j,
-                    isBomb: isBombRandom(),
+                    isBomb: false,
+                    isRevealed: false,
+                    isFlagged: false,
+                    bombsAround: 0
+                })
+            }
+        }
+        return grid;
+    }
+    function init(prevRow, prevCol) {
+        let grid = [];
+        bombs = 0;
+        for (let i = 0; i < props.size; ++i) {
+            grid.push([]);
+            for (let j = 0; j < props.size; ++j) {
+                grid[i].push({
+                    row: i,
+                    col: j,
+                    isBomb: (i === prevRow && j === prevCol) ? false: isBombRandom(),
                     isRevealed: false,
                     isFlagged: false,
                     bombsAround: 0
@@ -42,14 +63,14 @@ function Grid(props) {
     }
     function isBombRandom() {
         let rand = Math.floor((Math.random() * props.level));
-        let result = (rand % props.level) === 0;
+        let result = ((rand % props.level) === 0);
         if (result) {
             bombs++;
         }
         return result;
     }
     function updateCell(grid, row, col, action) {
-        if (action === "reveal") {
+		if (action === "reveal") {
         grid[row][col].isRevealed = true;
         }
         else {
@@ -58,19 +79,15 @@ function Grid(props) {
         return grid;
     }
     function checkRevealed() {
-        console.log(state.totalRevealed);
-        console.log(state.bombs);
         if (props.size * props.size - state.bombs === state.totalRevealed) {
             console.log("yes");
             setState((prevState) => {
                 return {...prevState, game_over: "won"};
             });
         }
-        console.log(state.game_over);
     }
 	function resetGrid() {
-		bombs = 0;
-		setState({grid: init(), bombs : bombs, totalRevealed: 0, game_over: false});
+		setState({grid: start(), bombs : 0, initialized: false, totalRevealed: 0, game_over: false});
 	}
     function recursiveSetState(row, col) {
         let visited = new Set();
@@ -81,7 +98,7 @@ function Grid(props) {
             let i = stack[stack.length - 1][0];
             let j = stack[stack.length - 1][1];
             stack.pop();
-            setState((prevState) => {return {...prevState, grid: updateCell(prevState.grid, i, j, "reveal"), totalRevealed: prevState.totalRevealed + 1}});
+            setState((prevState) => {return {...prevState, grid: updateCell(prevState.grid, i, j, "reveal"), totalRevealed: prevState.totalRevealed + (!state.grid[i][j].totalRevealed && 1)}});
             if (state.grid[i][j].bombsAround !== 0) continue;
             let neighbours = [[i + 1, j], [i - 1, j], [i, j + 1], [i, j - 1], [i + 1, j + 1], [i - 1, j + 1], [i - 1, j - 1], [i + 1, j - 1]];
             for (let k = 0; k < 8; ++k) {
@@ -96,11 +113,18 @@ function Grid(props) {
     useEffect(() => {
         checkRevealed();
     }, [state.totalRevealed]);
+	useEffect(() => {
+		if (state.initialized) recursiveSetState(state.prevRow, state.prevCol);
+	}, [state.initialized]);
     function handleClick(row, col, flag) {
-        if (state.game_over !== false || state.grid[row][col].isRevealed) return;
+		if (!state.initialized) {
+			setState({...state, grid: init(row, col), bombs: bombs, initialized: true, prevRow: row, prevCol: col});
+			return;
+		}
+        if (state.game_over !== false || state.grid[row][col].isRevealed || (state.grid[row][col].isFlagged && !flag)) return;
         if (!flag) {
             if (state.grid[row][col].isBomb) {
-                setState({...state, grid: updateCell(state.grid, row, col, "reveal"), game_over: "lost"});
+                setState({...state, grid: updateCell(state.grid, row, col, "reveal"), prevRow: row, prevCol: col, game_over: "lost"});
                 return;
             }
             else {
@@ -111,14 +135,19 @@ function Grid(props) {
             setState({...state, grid: updateCell(state.grid, row, col, "flag")});
         }
     }
+    function redo() {
+        let grid = state.grid;
+        grid[state.prevRow][state.prevCol].isRevealed = false;
+        setState({...state, grid: grid, game_over: false});
+    }
     for (let i = 0; i < props.size; ++i) {
         rows.push(<Row key = {i} size={props.size} row={i} cells={state.grid[i]} onclick={handleClick}></Row>)
     }
     return (
         <div>
-        <p style={{textAlign:"center"}}>Minesweeper <br></br> {state.game_over === "lost" && "Game over! You clicked on a mine!"} {state.game_over === "won" && "You won! All the empty squares are marked!"}
+        <p style={{textAlign:"center"}}>Minesweeper <br></br> {state.game_over === "lost" && <p>Game over! You clicked on a mine! or <button onClick={redo}>Undo</button>.</p>} {state.game_over === "won" && "You won! All the empty squares are marked!"}
 		<br></br><button onClick={resetGrid}>New Game</button></p>
-        <div class = "container" style={{marginTop: "2%"}}> 
+        <div className = "container" style={{marginTop: "2%"}}> 
         {rows}
         </div>
         </div>
