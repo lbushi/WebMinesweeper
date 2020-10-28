@@ -98,12 +98,12 @@ function Grid(props) {
             let i = stack[stack.length - 1][0];
             let j = stack[stack.length - 1][1];
             stack.pop();
-            setState((prevState) => {return {...prevState, grid: updateCell(prevState.grid, i, j, "reveal"), totalRevealed: prevState.totalRevealed + (!state.grid[i][j].totalRevealed && 1)}});
+            setState((prevState) => {return {...prevState, grid: updateCell(prevState.grid, i, j, "reveal"), totalRevealed: prevState.totalRevealed + 1}});
             if (state.grid[i][j].bombsAround !== 0) continue;
             let neighbours = [[i + 1, j], [i - 1, j], [i, j + 1], [i, j - 1], [i + 1, j + 1], [i - 1, j + 1], [i - 1, j - 1], [i + 1, j - 1]];
             for (let k = 0; k < 8; ++k) {
                 let [row_1, col_1] = neighbours[k];
-                if (validCell(row_1, col_1, props.size) && !visited.has((String(row_1) + "," + String(col_1)))) {
+                if (validCell(row_1, col_1, props.size) && !visited.has((String(row_1) + "," + String(col_1))) && !(state.grid[row_1][col_1].isRevealed || state.grid[row_1][col_1].isFlagged)) {
                     stack.push([row_1, col_1]);
                     visited.add((String(row_1) + "," + String(col_1)));
                 }
